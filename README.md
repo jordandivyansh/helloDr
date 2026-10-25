@@ -1,5 +1,7 @@
 # Littleleaf — Dr. Ruchi Lamyan’s clinic
 
+**[Live app](https://littleleaf-ruchi-lamyan.divyansh-kumar70.chatgpt.site)** · **[Doctor / Parent login](https://littleleaf-ruchi-lamyan.divyansh-kumar70.chatgpt.site/portal)** · **[Project guide](https://littleleaf-ruchi-lamyan.divyansh-kumar70.chatgpt.site/guide/)**
+
 A working full-stack development MVP for a pediatric practice at **ATS Nobility, Greater Noida**. “Littleleaf” is a proposed identity; doctor credentials are based on the supplied brief and must be approved before publication. Next.js/React/TypeScript frontend, separate Express/Node.js REST backend, persistent SQLite database.
 
 ## Learn and maintain this project
