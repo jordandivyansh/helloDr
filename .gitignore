@@ -1,0 +1,16 @@
+node_modules/
+.next/
+.env*
+!.env.example
+data/
+*.tsbuildinfo
+test-results/
+dist/
+out/
+.next-hosted/
+.wrangler/
+.sites-runtime/
+
+# Local metadata and dependency caches
+.DS_Store
+.pnpm-store/

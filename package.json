@@ -1,0 +1,41 @@
+{
+  "name": "littleleaf-clinic",
+  "private": true,
+  "version": "0.1.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:web": "next dev --hostname 127.0.0.1",
+    "dev:api": "node --watch server/index.mjs",
+    "build": "node hosting/build.mjs",
+    "start": "next start --hostname 127.0.0.1",
+    "start:api": "node server/index.mjs",
+    "test": "node --test server/*.test.mjs",
+    "typecheck": "tsc --noEmit",
+    "build:hosted": "node hosting/build.mjs",
+    "db:generate": "drizzle-kit generate",
+    "build:web": "next build"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.2.0",
+    "helmet": "^8.1.0",
+    "lucide-react": "^0.468.0",
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "drizzle-kit": "^0.31.11",
+    "drizzle-orm": "^0.45.3",
+    "esbuild": "^0.28.2",
+    "typescript": "^5.9.0",
+    "wrangler": "^4.147.0"
+  }
+}

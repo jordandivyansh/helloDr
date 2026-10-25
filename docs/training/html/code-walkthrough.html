@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Trace a parent’s click through the frontend, permissions, SQL, and the response."><title>Code walkthrough · Littleleaf Field Guide</title><script src="assets/theme.js"></script><link rel="stylesheet" href="assets/guide.css"><script src="assets/search-index.js" defer></script><script src="assets/guide.js" defer></script></head>
+<body data-page="code-walkthrough.html"><a class="skip" href="#main">Skip to lesson</a>
+<aside class="sidebar"><a class="brand" href="index.html">littleleaf<span> / learn</span></a><div class="edition">Project field guide · 01</div><label for="guide-search">Find a topic</label><input type="search" id="guide-search" placeholder="Try: hosting or sessions" autocomplete="off"><div class="search-results" aria-live="polite"></div><nav aria-label="Course chapters"><a href="index.html"><span class="chapter-number">00</span><span>Start here</span></a><a href="foundations.html"><span class="chapter-number">01</span><span>Foundations</span></a><a href="code-walkthrough.html" aria-current="page"><span class="chapter-number">02</span><span>Code walkthrough</span></a><a href="data-security.html"><span class="chapter-number">03</span><span>Data &amp; security</span></a><a href="operating-guide.html"><span class="chapter-number">04</span><span>Run &amp; host</span></a><a href="practice-labs.html"><span class="chapter-number">05</span><span>Practice labs</span></a><a href="clients-interviews.html"><span class="chapter-number">06</span><span>Clients &amp; interviews</span></a><a href="cheatsheet.html"><span class="chapter-number">07</span><span>Desk reference</span></a></nav><div class="note">Your path from basic DSA to understanding and maintaining a full-stack clinic project.</div><div class="progress-track"><span id="course-progress" style="width:0%"></span></div><div class="progress-label" id="progress-label">0 of 8 chapters marked complete</div><div class="offline">Offline-ready · No external libraries<br>Project snapshot: 6 October 2026</div></aside>
+<main class="workspace" id="main"><div class="topline"><span>Littleleaf / Engineering handbook</span><div class="guide-actions"><button type="button" data-theme-toggle aria-pressed="false" hidden>Dark mode</button><button type="button" data-print>Print / Save PDF</button></div></div><header class="hero"><div class="eyebrow">Chapter 02 / Code walkthrough</div><h1>Follow the request</h1><p class="lede">Trace a parent’s click through the frontend, permissions, SQL, and the response.</p><div class="meta"><span class="pill">7 min reading + practice</span><span class="pill">Beginner friendly</span><span class="pill">Based on your actual repository</span></div></header>
+<noscript><p class="no-js">All lessons and diagrams remain readable. Enable JavaScript for search, copy buttons, progress, and the booking simulator.</p></noscript>
+<div class="reading-layout"><article><p>Read these source files alongside this lesson. The small examples below are extracted or simplified teaching examples; the source files remain authoritative.</p>
+<h2 id="start-with-the-file-boundaries">Start with the file boundaries</h2>
+
+<div class="table-wrap" role="region" aria-label="Reference table" tabindex="0"><table><thead><tr><th scope="col">Change you want</th><th scope="col">Start here</th><th scope="col">Then inspect</th></tr></thead><tbody><tr><td>Landing page wording</td><td><code>app/page.tsx</code></td><td><code>app/layout.tsx</code> metadata</td></tr><tr><td>Colors, layout, responsive behavior</td><td><code>app/globals.css</code></td><td>Relevant component markup</td></tr><tr><td>Brand name/mark</td><td><code>components/Brand.tsx</code></td><td>Landing content and <code>/api/clinic</code></td></tr><tr><td>Booking form or dashboard</td><td><code>components/Portal.tsx</code></td><td><code>lib/api.ts</code>, relevant backend route</td></tr><tr><td>Validation or permissions</td><td><code>server/app.mjs</code></td><td><code>server/api.test.mjs</code></td></tr><tr><td>New persistent field</td><td><code>server/local-db.mjs</code>, <code>db/schema.ts</code></td><td>Migrations, inserts, seed, API, types, UI</td></tr><tr><td>Local ports or startup</td><td><code>scripts/dev.mjs</code>, <code>server/index.mjs</code></td><td><code>.env</code>, <code>next.config.ts</code></td></tr><tr><td>Cloud behavior</td><td><code>hosting/worker.mjs</code></td><td>Database adapter, build, seed</td></tr></tbody></table></div>
+<p>The portal is currently a large component. It is convenient for seeing the MVP in one place, but splitting it into feature components and hooks would improve maintainability. Do not mistake its compact formatting for a pattern you must copy.</p>
+<h2 id="reading-a-react-component">Reading a React component</h2>
+
+<p>Conceptually, a booking form behaves like this:</p>
+<div class="codebox"><div class="codebar"><span>tsx</span><button type="button" class="copy" aria-label="Copy code">Copy</button></div><pre><code>const [busy, setBusy] = useState(false);
+const [error, setError] = useState(&#x27;&#x27;);
+
+async function submit(event: React.FormEvent&lt;HTMLFormElement&gt;) {
+  event.preventDefault(); // Do not navigate away using native form submission.
+  const form = new FormData(event.currentTarget);
+  setBusy(true);
+  try {
+    await api(&#x27;/appointments&#x27;, post({
+      child_id: form.get(&#x27;child_id&#x27;),
+      day: form.get(&#x27;day&#x27;),
+      time: form.get(&#x27;time&#x27;),
+      type: form.get(&#x27;type&#x27;),
+      reason: form.get(&#x27;reason&#x27;),
+    }));
+    // Reload appointments and display success.
+  } catch (error) {
+    setError(error instanceof Error ? error.message : &#x27;Request failed&#x27;);
+  } finally {
+    setBusy(false);
+  }
+}</code></pre></div>
+<p>The actual portal uses shared submission helpers for several forms. <code>FormData</code> reads named inputs. <code>preventDefault()</code> prevents a full page submission. <code>try/catch/finally</code> handles success, failure, and cleanup. Disabling the button while busy improves UX, but it cannot prevent two separate browsers from booking the same slot.</p>
+<h2 id="the-http-helper">The HTTP helper</h2>
+
+<p><code>lib/api.ts</code> contains the real helper:</p>
+<div class="codebox"><div class="codebar"><span>ts</span><button type="button" class="copy" aria-label="Copy code">Copy</button></div><pre><code>export async function api&lt;T&gt;(path: string, options?: RequestInit): Promise&lt;T&gt; {
+  const response = await fetch(&#x27;/api&#x27; + path, {
+    ...options,
+    headers: { &#x27;Content-Type&#x27;: &#x27;application/json&#x27;, ...options?.headers }
+  });
+  const body = await response.json().catch(() =&gt; ({}));
+  if (!response.ok)
+    throw new Error(body.error || &#x27;Unable to connect. Please try again.&#x27;);
+  return body;
+}</code></pre></div>
+<p><code>...options</code> copies supplied request options. The helper prefixes <code>/api</code>, parses JSON, and converts an unsuccessful HTTP response into a thrown error. <code>fetch</code> does not throw just because the server returns 400; this helper explicitly checks <code>response.ok</code>.</p>
+<p>The generic <code>&lt;T&gt;</code> helps the TypeScript compiler know the expected shape. It does <strong>not</strong> validate response JSON at runtime. The same-origin browser request automatically includes the applicable cookie. JavaScript cannot read the HttpOnly session token.</p>
+<h2 id="booking-step-by-step">Booking, step by step</h2>
+<figure class="visual" data-simulator><figcaption>Try the booking request</figcaption>
+<div class="sim-controls"><label for="scenario">Scenario</label><select id="scenario"><option value="success">Available slot</option><option value="session">Expired session</option><option value="family">Another family's child</option><option value="conflict">Another request books first</option></select></div>
+<div class="flow"><div class="node sim-step blue"><span class="tag">1</span><strong>Form</strong><small>React state</small></div><div class="node sim-step teal"><span class="tag">2</span><strong>Request</strong><small>HTTP + cookie</small></div><div class="node sim-step violet"><span class="tag">3</span><strong>Session</strong><small>Who are you?</small></div><div class="node sim-step violet"><span class="tag">4</span><strong>Rules</strong><small>May you book?</small></div><div class="node sim-step amber"><span class="tag">5</span><strong>Insert</strong><small>Slot constraint</small></div><div class="node sim-step teal"><span class="tag">6</span><strong>Result</strong><small>JSON → UI</small></div></div><div class="sim-status" aria-live="polite"></div><div class="sim-actions"><button type="button" data-back>Previous</button><button type="button" class="primary" data-next>Next step</button><span data-count></span></div><p class="caption">Teaching simulation only. This never calls the clinic API or changes appointments.</p></figure>
+<figure class="visual"><figcaption>A booking crosses six boundaries</figcaption><div class="timeline"><div class="timeline-row"><span class="dot blue">01</span><div><strong>Collect</strong><p>Portal.tsx reads the selected child, date, time, type, and reason.</p></div></div><div class="timeline-row"><span class="dot teal">02</span><div><strong>Send</strong><p>lib/api.ts sends a same-origin HTTP POST with JSON and the session cookie.</p></div></div><div class="timeline-row"><span class="dot violet">03</span><div><strong>Authorize</strong><p>Express verifies identity, clinic scope, and family access.</p></div></div><div class="timeline-row"><span class="dot violet">04</span><div><strong>Validate</strong><p>Zod and business rules check input, future time, and published availability.</p></div></div><div class="timeline-row"><span class="dot amber">05</span><div><strong>Persist</strong><p>The unique index decides whether the slot can be occupied.</p></div></div><div class="timeline-row"><span class="dot teal">06</span><div><strong>Respond</strong><p>Return 201 or a conflict; the UI reloads the successful booking.</p></div></div></div></figure>
+<ol start="1"><li>Opening the booking modal triggers slot loading for the selected day.</li><li>Availability is advisory: another request may book a displayed slot before you submit.</li><li>Origin checks and rate limiting run before the protected endpoint.</li><li>Authentication resolves the session cookie into <code>req.user</code>.</li><li>Zod validates the body, including the allowed visit types and reason length.</li><li><code>childAccess()</code> checks the child belongs to this clinic and, for a parent, this user.</li><li>The route rejects past appointments and times that were not published.</li><li>The database insert enforces the final booking invariant.</li><li>Success is audited, then the route returns 201.</li><li>The UI reloads server data and displays the result.</li></ol>
+<p>Notice that <code>parent_id</code> is derived from the authorized child record. It is not trusted from a user-supplied JSON field.</p>
+<h2 id="middleware-order-is-part-of-security">Middleware order is part of security</h2>
+<figure class="visual"><figcaption>Order determines access</figcaption><div class="flow"><div class="node blue"><strong>Parse + protect</strong><small>Headers, JSON, Origin, limits</small></div><span class="arrow" aria-hidden="true">→</span><div class="node teal"><strong>Public routes</strong><small>Health, clinic, sign-in</small></div><span class="arrow" aria-hidden="true">→</span><div class="node violet"><strong>Authenticate</strong><small>Resolve req.user</small></div><span class="arrow" aria-hidden="true">→</span><div class="node amber"><strong>Private routes</strong><small>Role + resource checks</small></div></div></figure>
+<p>The Express application roughly registers:</p>
+<div class="codebox"><div class="codebar"><span>text</span><button type="button" class="copy" aria-label="Copy code">Copy</button></div><pre><code>Headers + JSON parser
+→ Origin check + rate limits
+→ Public health, clinic, login, registration routes
+→ Session authentication middleware
+→ Protected routes, with doctor middleware where needed
+→ Unknown endpoint handler
+→ Error handler</code></pre></div>
+<p>Registering a new private route above the authentication middleware could expose it. Registering it after the fallback 404 could make it unreachable. The order matters as much as the handler body.</p>
+<p><code>doctor</code> checks role. <code>childAccess</code> checks the resource scope. They answer different questions: “May this role perform this kind of action?” and “May this user access this particular child?”</p>
+<h2 id="login-is-another-request-flow">Login is another request flow</h2>
+<figure class="visual"><figcaption>Password verification → session</figcaption><div class="flow"><div class="node blue"><strong>Credentials</strong><small>Verify salted scrypt hash</small></div><span class="arrow" aria-hidden="true">→</span><div class="node violet"><strong>Random token</strong><small>Create 32 random bytes</small></div><span class="arrow" aria-hidden="true">→</span><div class="node amber"><strong>Two destinations</strong><small>Raw token → cookie; hash → DB</small></div><span class="arrow" aria-hidden="true">→</span><div class="node teal"><strong>Next request</strong><small>Hash cookie → session lookup</small></div></div></figure>
+<div class="codebox"><div class="codebar"><span>text</span><button type="button" class="copy" aria-label="Copy code">Copy</button></div><pre><code>Email + password
+  → Find user by clinic and normalized email
+  → Verify salted scrypt hash
+  → Generate random session token
+  → Store SHA-256(token), user ID, expiry
+  → Send raw token in HttpOnly cookie
+  → Later requests hash the cookie and look up the session</code></pre></div>
+<p>The password itself is not stored. The session token is not a JWT; it is an opaque random value backed by a database row. Server-side logout deletes this user&#x27;s sessions, so it currently signs out all of that user&#x27;s sessions, not just one device.</p>
+<p>Session expiry is eight hours in the current code. A page that remains open can outlive its session; a later request then receives 401. Better centralized expired-session handling is a useful future UI improvement.</p>
+<h2 id="state-transitions">State transitions</h2>
+
+<figure class="visual"><figcaption>Appointment transitions</figcaption><div class="flow"><div class="node blue"><strong>Scheduled</strong><small>Parent or doctor may cancel</small></div><span class="arrow" aria-hidden="true">→</span><div class="node violet"><strong>Checked-in</strong><small>Doctor checks in; cancellation still allowed</small></div><span class="arrow" aria-hidden="true">→</span><div class="node teal"><strong>Completed</strong><small>Doctor completes; terminal state</small></div></div><p class="caption">Scheduled or checked-in → Cancelled (terminal). Scheduled → Completed is rejected.</p><p class="caption">This diagram describes the current backend, including parent cancellation after check-in.</p></figure>
+<p>The database value is <code>checked-in</code>; the diagram uses <code>checked_in</code> as an identifier. The current backend allows parents to cancel their own checked-in appointments too. That is an implemented rule, not necessarily the final clinic policy.</p>
+<p><code>scheduled → completed</code> is rejected. Completed and cancelled records cannot transition again through this endpoint. The current implementation checks the old state then updates in a separate operation; see the concurrency exercise for the remaining race.</p>
+<h2 id="why-the-same-backend-works-locally-and-online">Why the same backend works locally and online</h2>
+<figure class="visual"><figcaption>One interface, two storage adapters</figcaption><div class="compare"><div class="node amber"><strong>Local adapter</strong><small>DatabaseSync executes against a local SQLite file.</small></div><div class="node violet"><strong>Cloud adapter</strong><small>D1 calls are awaited and mapped to run/get/all results.</small></div></div><p class="caption">createApp({ db }) receives its dependency; tests can supply in-memory storage.</p></figure>
+<p><code>createApp({ db })</code> receives a database adapter rather than opening a file itself. Both adapters offer <code>prepare(sql).run/get/all</code>.</p>
+<p>Local <code>DatabaseSync</code> returns values synchronously. The D1 adapter returns Promises and maps platform results into the same basic shapes. Routes <code>await</code> both. This is <strong>dependency injection</strong>: supply a dependency to business logic rather than hard-code its construction inside every function.</p>
+<p>It also enables tests to provide an in-memory database. This reduces infrastructure duplication, but SQL syntax and transaction semantics still require care if you later move to PostgreSQL.</p>
+<h2 id="trace-a-feature-yourself">Trace a feature yourself</h2>
+
+<p>Search for these exact strings:</p>
+<div class="codebox"><div class="codebar"><span>sh</span><button type="button" class="copy" aria-label="Copy code">Copy</button></div><pre><code>rg -n &quot;appointments|childAccess|one_booking_per_slot&quot; components/Portal.tsx lib/api.ts server db
+rg -n &quot;assistant/brief|structured-preview&quot; server/app.mjs components/Portal.tsx</code></pre></div>
+<p>For each feature write five lines: UI trigger, URL/method, validation, authorization, database change. If you can do this for booking, notes, and vaccines, you understand the main request patterns in this application.</p><section class="checkpoint" aria-label="Check your understanding"><h2>Pause & explain</h2><p>Answer aloud, then open the explanation.</p><details><summary>Can a parent bypass security by calling the endpoint directly?</summary><p>The backend must independently enforce the session, role, tenant, and family checks. UI visibility does not grant permission.</p></details><details><summary>Why reload after booking?</summary><p>The server owns the authoritative record. Reloading reconciles the interface with the saved result.</p></details></section><footer class="lesson-footer"><div class="complete"><p>Finish the exercise before marking this chapter complete.</p><button type="button" class="primary" data-complete aria-pressed="false">Mark complete</button></div><nav class="pager" aria-label="Adjacent chapters"><a href="foundations.html">← Foundations</a><a href="data-security.html">Data &amp; security →</a></nav></footer></article><aside class="toc" aria-label="On this page"><strong>On this page</strong><a href="#start-with-the-file-boundaries">Start with the file boundaries</a><a href="#reading-a-react-component">Reading a React component</a><a href="#the-http-helper">The HTTP helper</a><a href="#booking-step-by-step">Booking, step by step</a><a href="#middleware-order-is-part-of-security">Middleware order is part of security</a><a href="#login-is-another-request-flow">Login is another request flow</a><a href="#state-transitions">State transitions</a><a href="#why-the-same-backend-works-locally-and-online">Why the same backend works locally and online</a><a href="#trace-a-feature-yourself">Trace a feature yourself</a></aside></div><p class="footer-note">Littleleaf learning edition · Working MVP, not a production-readiness certification. Examples and diagrams distinguish current behavior from future design.</p></main></body></html>

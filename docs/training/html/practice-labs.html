@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Six ordered exercises that move from a sentence on screen to a database concurrency guarantee."><title>Practice labs · Littleleaf Field Guide</title><script src="assets/theme.js"></script><link rel="stylesheet" href="assets/guide.css"><script src="assets/search-index.js" defer></script><script src="assets/guide.js" defer></script></head>
+<body data-page="practice-labs.html"><a class="skip" href="#main">Skip to lesson</a>
+<aside class="sidebar"><a class="brand" href="index.html">littleleaf<span> / learn</span></a><div class="edition">Project field guide · 01</div><label for="guide-search">Find a topic</label><input type="search" id="guide-search" placeholder="Try: hosting or sessions" autocomplete="off"><div class="search-results" aria-live="polite"></div><nav aria-label="Course chapters"><a href="index.html"><span class="chapter-number">00</span><span>Start here</span></a><a href="foundations.html"><span class="chapter-number">01</span><span>Foundations</span></a><a href="code-walkthrough.html"><span class="chapter-number">02</span><span>Code walkthrough</span></a><a href="data-security.html"><span class="chapter-number">03</span><span>Data &amp; security</span></a><a href="operating-guide.html"><span class="chapter-number">04</span><span>Run &amp; host</span></a><a href="practice-labs.html" aria-current="page"><span class="chapter-number">05</span><span>Practice labs</span></a><a href="clients-interviews.html"><span class="chapter-number">06</span><span>Clients &amp; interviews</span></a><a href="cheatsheet.html"><span class="chapter-number">07</span><span>Desk reference</span></a></nav><div class="note">Your path from basic DSA to understanding and maintaining a full-stack clinic project.</div><div class="progress-track"><span id="course-progress" style="width:0%"></span></div><div class="progress-label" id="progress-label">0 of 8 chapters marked complete</div><div class="offline">Offline-ready · No external libraries<br>Project snapshot: 6 October 2026</div></aside>
+<main class="workspace" id="main"><div class="topline"><span>Littleleaf / Engineering handbook</span><div class="guide-actions"><button type="button" data-theme-toggle aria-pressed="false" hidden>Dark mode</button><button type="button" data-print>Print / Save PDF</button></div></div><header class="hero"><div class="eyebrow">Chapter 05 / Practice labs</div><h1>Learn by changing it</h1><p class="lede">Six ordered exercises that move from a sentence on screen to a database concurrency guarantee.</p><div class="meta"><span class="pill">6 min reading + practice</span><span class="pill">Beginner friendly</span><span class="pill">Based on your actual repository</span></div></header>
+<noscript><p class="no-js">All lessons and diagrams remain readable. Enable JavaScript for search, copy buttons, progress, and the booking simulator.</p></noscript>
+<div class="reading-layout"><article><p>These exercises are not already implemented. Work on fictional local data, review your diff, and finish one lab before starting the next. Use a Git branch if you are comfortable with branches. Do not reset the database just to undo a UI experiment.</p>
+<h2 id="lab-1-change-visible-content">Lab 1 — Change visible content</h2>
+<figure class="visual"><figcaption>Build confidence in small steps</figcaption><div class="flow"><div class="node blue"><strong>1 · Text</strong><small>One file; visible result</small></div><span class="arrow" aria-hidden="true">→</span><div class="node teal"><strong>2 · Filter</strong><small>React state + derived array</small></div><span class="arrow" aria-hidden="true">→</span><div class="node violet"><strong>3 · Rule</strong><small>UI + API + test</small></div></div></figure>
+<p><strong>Goal:</strong> Change one landing-page sentence and see it locally.</p>
+<ol start="1"><li>Find the sentence in <code>app/page.tsx</code> using editor search or <code>rg</code>.</li><li>Change its wording without inventing a consultation fee, phone number, or medical claim.</li><li>Start development and refresh the page.</li><li>Inspect desktop and narrow mobile width.</li><li>Review the diff. Explain why neither an API nor a migration was needed.</li></ol>
+<p><strong>Pass condition:</strong> Only intended text changed; layout still works. No new test is necessary for this low-impact wording exercise.</p>
+<p><strong>Extension:</strong> Find the page metadata in <code>app/layout.tsx</code>. Explain why browser title/search metadata and visible page text are separate.</p>
+<h2 id="lab-2-add-a-frontend-appointment-filter">Lab 2 — Add a frontend appointment filter</h2>
+
+<p><strong>Goal:</strong> Add a filter for one visit type using the appointments already loaded by the portal.</p>
+<p>Use state for the selected type and combine it with existing filters rather than replacing them. A simplified pattern:</p>
+<div class="codebox"><div class="codebar"><span>tsx</span><button type="button" class="copy" aria-label="Copy code">Copy</button></div><pre><code>const [visitType, setVisitType] = useState(&#x27;all&#x27;);
+const visible = appointments.filter(appointment =&gt;
+  visitType === &#x27;all&#x27; || appointment.type === visitType
+);</code></pre></div>
+<p>Use a labeled native select. Existing exact types are <code>Well-child visit</code>, <code>Vaccination visit</code>, <code>Follow-up</code>, and <code>General consultation</code>. Resetting to <code>all</code> must restore the full applicable list.</p>
+<p><strong>Pass condition:</strong> It works for both roles without revealing any new records. Test the empty state. Run TypeScript checks and inspect the interface.</p>
+<p><strong>Explain:</strong> The API already scopes accessible records. This filter only narrows presentation; it is not a security boundary. Filtering an array of n appointments takes O(n) work for this pass. Future server-side filtering/pagination avoids transferring all records.</p>
+<h2 id="lab-3-change-a-business-validation-rule">Lab 3 — Change a business validation rule</h2>
+
+<p><strong>Goal:</strong> Require at least 10 characters for appointment reasons instead of 3.</p>
+<ol start="1"><li>Find the appointment request schema in <code>server/app.mjs</code>.</li><li>Update the minimum and error message.</li><li>Update the form&#x27;s corresponding client constraints/help text so the UX matches.</li><li>Add or adapt an integration test with a valid child and published future slot. Verify a 9-character reason fails and a 10-character reason succeeds.</li><li>Check existing test fixtures: short previously valid reasons may need updating.</li></ol>
+<p><strong>Pass condition:</strong> Direct API calls cannot bypass the minimum. Errors are understandable in the UI. Tests and type checks pass.</p>
+<p><strong>Explain:</strong> HTML validation is convenience; server validation is authoritative. Why not require 10 characters only in the browser?</p>
+<h2 id="lab-4-add-a-scoped-read-only-endpoint">Lab 4 — Add a scoped read-only endpoint</h2>
+<figure class="visual"><figcaption>A complete new feature</figcaption><div class="flow"><div class="node violet"><strong>Route</strong><small>After authentication</small></div><span class="arrow" aria-hidden="true">→</span><div class="node amber"><strong>SQL</strong><small>Tenant + family scope</small></div><span class="arrow" aria-hidden="true">→</span><div class="node blue"><strong>Response</strong><small>Typed counts in JSON</small></div><span class="arrow" aria-hidden="true">→</span><div class="node teal"><strong>UI + tests</strong><small>Display and verify isolation</small></div></div></figure>
+<p><strong>Goal:</strong> Add <code>GET /api/dashboard/summary</code>, returning counts per appointment status for the signed-in user&#x27;s scope.</p>
+<p>Inside <code>createApp</code>, place the route <strong>after authentication middleware and before the fallback 404</strong>. The following proposed code uses the existing <code>all</code> helper and <code>tenant</code> variable:</p>
+<div class="codebox"><div class="codebar"><span>js</span><button type="button" class="copy" aria-label="Copy code">Copy</button></div><pre><code>app.get(&#x27;/api/dashboard/summary&#x27;, async (req, res) =&gt; {
+  const isDoctor = req.user.role === &#x27;doctor&#x27;;
+  const rows = await all(
+    `SELECT status, COUNT(*) AS total
+     FROM appointments
+     WHERE tenant=? ${isDoctor ? &#x27;&#x27; : &#x27;AND parent_id=?&#x27;}
+     GROUP BY status`,
+    tenant,
+    ...(isDoctor ? [] : [req.user.id])
+  );
+  const counts = {
+    scheduled: 0,
+    &#x27;checked-in&#x27;: 0,
+    completed: 0,
+    cancelled: 0
+  };
+  for (const row of rows) counts[row.status] = row.total;
+  res.json({ counts });
+});</code></pre></div>
+<p>The interpolated SQL fragment is selected by trusted code, not arbitrary user input. Values remain bound parameters. This is deliberately a counts endpoint; it does not leak child details.</p>
+<p>Add a TypeScript response type in the frontend, call the endpoint, and display the counts. Avoid retaining two conflicting sources for the same dashboard metric.</p>
+<p><strong>Tests to write:</strong> unauthenticated 401; parent sees only their counts; doctor sees this clinic&#x27;s counts; another tenant excluded; an empty result returns zeros. Use actual seeded/test-created rows rather than assuming permanent sample totals.</p>
+<p><strong>Explain:</strong> Why do the doctor and parent execute different scopes? Why should the frontend not send a trusted <code>parent_id</code>?</p>
+<h2 id="lab-5-add-a-persistent-field-carefully">Lab 5 — Add a persistent field carefully</h2>
+<figure class="visual"><figcaption>A field touches more than a form</figcaption><div class="stack"><div class="node amber"><strong>Database</strong><small>Local schema + upgrade path + cloud migration.</small></div><div class="node violet"><strong>Writes</strong><small>Validation + explicit column lists + both seeds.</small></div><div class="node blue"><strong>Interface</strong><small>Response type + input control + display.</small></div><div class="node teal"><strong>Verification</strong><small>Old rows, new rows, invalid input, and access checks.</small></div></div></figure>
+<p><strong>Goal:</strong> Design an optional child nickname field. First write a change checklist; then implement on a disposable development database.</p>
+<p>Changes needed:</p>
+<ol start="1"><li>Cloud schema in <code>db/schema.ts</code>, then generate a new migration with <code>pnpm db:generate</code>.</li><li>Local creation schema in <code>server/local-db.mjs</code> and a deliberate upgrade path for existing local databases.</li><li>Input validation with a sensible length limit and empty/default behavior.</li><li>Child insert/update behavior. Existing <code>INSERT INTO children VALUES(...)</code> depends on column order/count; convert affected statements to explicit column lists.</li><li>Local and hosted seed inserts, which must remain compatible.</li><li><code>Child</code> TypeScript type and the form/display.</li><li>Tests covering omitted nickname, accepted nickname, excessive length, and an existing record after migration.</li></ol>
+<p><strong>Pass condition:</strong> Existing children still load, new children save, both local and cloud schemas agree, and nickname changes do not affect ownership checks.</p>
+<p><strong>Explain:</strong> <code>CREATE TABLE IF NOT EXISTS</code> does not alter an existing table. A schema file is a desired definition; a migration is the operation that changes an existing database. Never edit an already-applied migration to pretend it was different historically.</p>
+<h2 id="lab-6-fix-a-concurrency-issue">Lab 6 — Fix a concurrency issue</h2>
+<figure class="visual"><figcaption>Optimistic concurrency</figcaption><div class="compare"><div class="node rose"><strong>Old approach</strong><small>Read scheduled → decide → update by ID. A competing update can intervene.</small></div><div class="node teal"><strong>Conditional update</strong><small>Update only WHERE status = previously read status. Zero changed rows means conflict.</small></div></div></figure>
+<p><strong>Goal:</strong> Prevent two status updates from both acting on the same stale appointment state.</p>
+<p>Current sequence is read → validate transition → update by id/tenant. Use an optimistic conditional update:</p>
+<div class="codebox"><div class="codebar"><span>sql</span><button type="button" class="copy" aria-label="Copy code">Copy</button></div><pre><code>UPDATE appointments
+SET status = ?
+WHERE id = ? AND tenant = ? AND status = ?;</code></pre></div>
+<p>The last parameter is the previously read status. If <code>changes</code> is zero, another operation changed the row first; return a conflict and ask the client to refresh. Preserve all existing ownership/role/transition checks.</p>
+<p><strong>Tests:</strong> Keep sequential transition tests. Add a controlled test where two operations read the same previous state before either writes; verify at most one succeeds. A plain <code>Promise.all</code> can be useful but may not reliably force the problematic interleaving. Test against the adapter behavior you intend to guarantee.</p>
+<p><strong>Explain:</strong> This is compare-and-set on persistent data. It protects the update&#x27;s precondition. It does not by itself make the later audit insert atomic.</p>
+<h2 id="advanced-project-exercises">Advanced project exercises</h2>
+
+<p>Choose these only after the core labs:</p>
+<ul><li>Extract booking UI into a component without changing behavior; define its props clearly.</li><li>Add server pagination with stable ordering and family/tenant filters.</li><li>Add request IDs and structured error logs that omit sensitive content.</li><li>Design multi-guardian authorization before adding another parent field.</li><li>Design tenant resolution from a verified domain; never trust a client-provided tenant identifier alone.</li><li>Add a notification outbox and worker so reminder delivery can retry independently.</li></ul>
+<h2 id="your-lab-journal">Your lab journal</h2>
+
+<p>For every change record:</p>
+<div class="codebox"><div class="codebar"><span>text</span><button type="button" class="copy" aria-label="Copy code">Copy</button></div><pre><code>Problem:
+Expected behavior:
+Files changed:
+Request/response or schema change:
+Authorization preserved:
+Checks run and actual result:
+Known limitation:
+How to undo safely:</code></pre></div>
+<p>This becomes evidence for interviews and client discussions. Real changes you can explain are more valuable than memorized technology lists.</p><section class="checkpoint" aria-label="Check your understanding"><h2>Pause & explain</h2><p>Answer aloud, then open the explanation.</p><details><summary>Why add a backend test when changing a UI validation rule?</summary><p>A client can skip the UI. The backend must enforce the rule for all callers.</p></details><details><summary>Why check changed rows after a conditional update?</summary><p>Zero means the old-state precondition did not hold, so a competing change or missing record must be handled.</p></details></section><footer class="lesson-footer"><div class="complete"><p>Finish the exercise before marking this chapter complete.</p><button type="button" class="primary" data-complete aria-pressed="false">Mark complete</button></div><nav class="pager" aria-label="Adjacent chapters"><a href="operating-guide.html">← Run &amp; host</a><a href="clients-interviews.html">Clients &amp; interviews →</a></nav></footer></article><aside class="toc" aria-label="On this page"><strong>On this page</strong><a href="#lab-1-change-visible-content">Lab 1 — Change visible content</a><a href="#lab-2-add-a-frontend-appointment-filter">Lab 2 — Add a frontend appointment filter</a><a href="#lab-3-change-a-business-validation-rule">Lab 3 — Change a business validation rule</a><a href="#lab-4-add-a-scoped-read-only-endpoint">Lab 4 — Add a scoped read-only endpoint</a><a href="#lab-5-add-a-persistent-field-carefully">Lab 5 — Add a persistent field carefully</a><a href="#lab-6-fix-a-concurrency-issue">Lab 6 — Fix a concurrency issue</a><a href="#advanced-project-exercises">Advanced project exercises</a><a href="#your-lab-journal">Your lab journal</a></aside></div><p class="footer-note">Littleleaf learning edition · Working MVP, not a production-readiness certification. Examples and diagrams distinguish current behavior from future design.</p></main></body></html>
